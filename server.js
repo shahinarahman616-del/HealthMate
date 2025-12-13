@@ -23,10 +23,12 @@ const useFakeEmail = true;
 
 // Enhanced MySQL Database Connection with better error handling
 const db = mysql.createConnection({
-  host: 'localhost',
-  user: 'root',
-  password: '', // Your MySQL password
-  database: 'healthmate_app',
+  host: process.env.DB_HOST,          // Railway host
+  user: process.env.DB_USER,          // Railway user
+  password: process.env.DB_PASSWORD,  // Railway password
+  database: process.env.DB_NAME,      // Railway database
+  port: Number(process.env.DB_PORT),  // Railway port
+  ssl: { rejectUnauthorized: false }, // Required for Render + Railway
   connectTimeout: 60000,
   acquireTimeout: 60000,
   timeout: 60000,
