@@ -15,10 +15,13 @@
     <div id="root"></div>
 
     <script type="text/babel">
-          const API_BASE_URL = window.location.hostname === 'localhost'
+      // ---------------------------
+      // Backend Base URL Configuration
+      // ---------------------------
+      const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
         ? 'http://localhost:5001'
         : 'https://healthmate-backend-m6xy.onrender.com';
-      
+
       // ------------------------------------------
       // 1. RESPONSIVE NAVBAR (Mobile Menu Added)
       // ------------------------------------------
@@ -154,44 +157,66 @@
             finalDiseases.push(`Other: ${otherDisease}`);
           }
 
+          // Convert height if needed
+          let heightCm = formData.height;
+          if (formData.heightUnit === 'ft') {
+            // Convert feet to cm: 1 ft = 30.48 cm
+            heightCm = parseFloat(formData.height) * 30.48;
+          }
+
           const submitData = {
-            ...formData,
-            chronicDiseases: finalDiseases
+            full_name: formData.name,
+            age: parseInt(formData.age),
+            height_cm: parseFloat(heightCm).toFixed(1),
+            weight_kg: parseFloat(formData.weight),
+            blood_group: formData.bloodGroup,
+            gender: formData.gender,
+            phone: formData.phone,
+            email: formData.email.toLowerCase().trim(),
+            address: formData.address,
+            password: formData.password,
+            chronic_diseases: JSON.stringify(finalDiseases)
           };
 
           console.log('🚀 Form submitted with data:', submitData);
           
           // Validate required fields
           const requiredFields = ['name', 'age', 'height', 'weight', 'bloodGroup', 'gender', 'phone', 'email', 'address', 'password'];
-          const missingFields = requiredFields.filter(field => !submitData[field].trim());
+          const missingFields = requiredFields.filter(field => !formData[field].trim());
           
           if (missingFields.length > 0) {
             setErrorMessage('❌ Please fill all required fields: ' + missingFields.join(', '));
             return;
           }
 
-          if (submitData.chronicDiseases.length === 0) {
+          if (finalDiseases.length === 0) {
             setErrorMessage('❌ Please select at least one chronic disease option (select "None" if no diseases)');
             return;
           }
 
           // Validate email format
           const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-          if (!emailRegex.test(submitData.email)) {
+          if (!emailRegex.test(formData.email)) {
             setErrorMessage('❌ Please enter a valid email address');
             return;
           }
 
           // Validate password length
-          if (submitData.password.length < 6) {
+          if (formData.password.length < 6) {
             setErrorMessage('❌ Password must be at least 6 characters long');
+            return;
+          }
+
+          // Validate age
+          if (parseInt(formData.age) < 1 || parseInt(formData.age) > 120) {
+            setErrorMessage('❌ Age must be between 1 and 120');
             return;
           }
 
           setIsLoading(true);
           
           try {
-            const response = await fetch('http://localhost:5001/api/register', {
+            const response = await fetch(`${API_BASE_URL}/api/register`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
@@ -202,8 +227,36 @@
             const result = await response.json();
             
             if (result.success) {
-              setSuccessMessage('✅ Registration Successful! Redirecting to login...');
-              console.log('✅ User registered successfully:', result.user);
+              setSuccessMessage('✅ Registration Successful! Storing user data...');
+              console.log('✅ User registered successfully:', result);
+              
+              // Store user data in the format that profile.html expects
+              if (result.user) {
+                const userData = {
+                  user_id: result.user.user_id || result.user.id,
+                  full_name: result.user.full_name || result.user.name || formData.name,
+                  email: result.user.email || formData.email,
+                  phone: result.user.phone || formData.phone,
+                  age: result.user.age || formData.age,
+                  height_cm: result.user.height_cm || heightCm,
+                  weight_kg: result.user.weight_kg || formData.weight,
+                  blood_group: result.user.blood_group || formData.bloodGroup,
+                  gender: result.user.gender || formData.gender,
+                  address: result.user.address || formData.address,
+                  chronic_diseases: result.user.chronic_diseases || JSON.stringify(finalDiseases),
+                  created_at: result.user.created_at || new Date().toISOString()
+                };
+                
+                // Store in localStorage for profile page
+                localStorage.setItem('healthmate_userData', JSON.stringify(userData));
+                console.log('✅ User data stored in localStorage:', userData);
+                
+                // Also store individual values for backward compatibility
+                localStorage.setItem('healthmate_loggedIn', 'true');
+                localStorage.setItem('healthmate_user', userData.email);
+                localStorage.setItem('healthmate_userId', userData.user_id);
+                localStorage.setItem('healthmate_userName', userData.full_name);
+              }
               
               // Clear form
               setFormData({
@@ -222,43 +275,56 @@
               });
               setOtherDisease('');
               
-              // Redirect to login after 2 seconds
+              // Redirect to profile page after 2 seconds
               setTimeout(() => {
-                window.location.href = 'login.html';
+                if (result.user?.user_id || result.user?.id) {
+                  const userId = result.user.user_id || result.user.id;
+                  window.location.href = `profile.html?user_id=${userId}`;
+                } else {
+                  window.location.href = 'login.html';
+                }
               }, 2000);
               
             } else {
-              setErrorMessage('❌ ' + result.message);
+              setErrorMessage('❌ ' + (result.message || 'Registration failed. Please try again.'));
             }
           } catch (error) {
             console.error('Error:', error);
-            setErrorMessage('❌ Network error. Please check if server is running.');
+            setErrorMessage('❌ Network error. Please check if server is running: ' + API_BASE_URL);
           } finally {
             setIsLoading(false);
           }
         };
 
         const getHeightPlaceholder = () => {
-          return formData.heightUnit === 'cm' ? 'Height in cm' : 'Height in feet';
+          return formData.heightUnit === 'cm' ? 'Height in cm' : 'Height in feet (e.g., 5.8)';
         };
 
         return (
           // 2. FORM CONTAINER (Added vertical padding and responsive inner padding)
           <div className="flex items-center justify-center min-h-[80vh] px-4 py-8">
             <div className="bg-white shadow-lg rounded-2xl p-4 md:p-8 w-full max-w-2xl">
-              <h2 className="text-2xl font-bold text-center mb-6 text-gray-800">
-                Create Your Account 💚
-              </h2>
+              <div className="text-center mb-6">
+                <div className="text-green-600 text-5xl mb-2">💚</div>
+                <h2 className="text-2xl font-bold text-gray-800">Create Your Account</h2>
+                <p className="text-gray-600 mt-2">Join HealthMate to manage your health</p>
+              </div>
 
               {errorMessage && (
                 <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-                  <p className="text-red-700 text-sm text-center">{errorMessage}</p>
+                  <div className="flex items-center">
+                    <span className="text-red-500 mr-2">⚠️</span>
+                    <p className="text-red-700 text-sm">{errorMessage}</p>
+                  </div>
                 </div>
               )}
 
               {successMessage && (
                 <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-                  <p className="text-green-700 text-sm text-center">{successMessage}</p>
+                  <div className="flex items-center">
+                    <span className="text-green-500 mr-2">✅</span>
+                    <p className="text-green-700 text-sm">{successMessage}</p>
+                  </div>
                 </div>
               )}
 
@@ -273,10 +339,11 @@
                     type="text" 
                     name="name"
                     placeholder="Full Name" 
-                    className="border p-2 rounded w-full border-green-500" 
+                    className="border p-3 rounded w-full border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500" 
                     value={formData.name}
                     onChange={handleInputChange}
                     required
+                    disabled={isLoading}
                   />
                 </div>
 
@@ -289,12 +356,13 @@
                     type="number" 
                     name="age"
                     placeholder="Age" 
-                    className="border p-2 rounded w-full border-green-500" 
+                    className="border p-3 rounded w-full border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500" 
                     value={formData.age}
                     onChange={handleInputChange}
                     min="1"
                     max="120"
                     required
+                    disabled={isLoading}
                   />
                 </div>
 
@@ -308,17 +376,20 @@
                       type="number" 
                       name="height"
                       placeholder={getHeightPlaceholder()}
-                      className="border p-2 rounded w-full border-green-500" 
+                      className="border p-3 rounded w-full border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500" 
                       value={formData.height}
                       onChange={handleInputChange}
                       step={formData.heightUnit === 'cm' ? '1' : '0.1'}
+                      min="1"
                       required
+                      disabled={isLoading}
                     />
                     <select 
                       name="heightUnit"
-                      className="border p-2 rounded border-green-500"
+                      className="border p-3 rounded border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500"
                       value={formData.heightUnit}
                       onChange={handleInputChange}
+                      disabled={isLoading}
                     >
                       <option value="cm">cm</option>
                       <option value="ft">ft</option>
@@ -335,12 +406,14 @@
                     type="number" 
                     name="weight"
                     placeholder="Weight in kg" 
-                    className="border p-2 rounded w-full border-green-500" 
+                    className="border p-3 rounded w-full border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500" 
                     value={formData.weight}
                     onChange={handleInputChange}
                     min="1"
                     max="300"
+                    step="0.1"
                     required
+                    disabled={isLoading}
                   />
                 </div>
 
@@ -353,10 +426,11 @@
                     type="text" 
                     name="bloodGroup"
                     placeholder="e.g., O+, A-, B+" 
-                    className="border p-2 rounded w-full border-green-500" 
+                    className="border p-3 rounded w-full border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500" 
                     value={formData.bloodGroup}
                     onChange={handleInputChange}
                     required
+                    disabled={isLoading}
                   />
                 </div>
 
@@ -367,10 +441,11 @@
                   </label>
                   <select 
                     name="gender"
-                    className="border p-2 rounded w-full border-green-500"
+                    className="border p-3 rounded w-full border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500"
                     value={formData.gender}
                     onChange={handleInputChange}
                     required
+                    disabled={isLoading}
                   >
                     <option value="">Select Gender</option>
                     <option value="Male">Male</option>
@@ -388,10 +463,11 @@
                     type="text" 
                     name="phone"
                     placeholder="Phone Number" 
-                    className="border p-2 rounded w-full border-green-500" 
+                    className="border p-3 rounded w-full border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500" 
                     value={formData.phone}
                     onChange={handleInputChange}
                     required
+                    disabled={isLoading}
                   />
                 </div>
 
@@ -404,10 +480,11 @@
                     type="email" 
                     name="email"
                     placeholder="Email Address" 
-                    className="border p-2 rounded w-full border-green-500" 
+                    className="border p-3 rounded w-full border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500" 
                     value={formData.email}
                     onChange={handleInputChange}
                     required
+                    disabled={isLoading}
                   />
                 </div>
 
@@ -420,10 +497,11 @@
                     type="text" 
                     name="address"
                     placeholder="Full Address" 
-                    className="border p-2 rounded w-full border-green-500" 
+                    className="border p-3 rounded w-full border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500" 
                     value={formData.address}
                     onChange={handleInputChange}
                     required
+                    disabled={isLoading}
                   />
                 </div>
 
@@ -436,11 +514,12 @@
                     type="password" 
                     name="password"
                     placeholder="Password (min 6 characters)" 
-                    className="border p-2 rounded w-full border-green-500" 
+                    className="border p-3 rounded w-full border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500" 
                     value={formData.password}
                     onChange={handleInputChange}
                     minLength="6"
                     required
+                    disabled={isLoading}
                   />
                 </div>
 
@@ -449,7 +528,7 @@
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Chronic Diseases *
                   </label>
-                  <div className="flex flex-col gap-2">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                     {['Diabetes', 'Hypertension', 'Heart Disease', 'Asthma', 'Kidney Disease', 'None'].map(disease => (
                       <label key={disease} className="flex items-center">
                         <input 
@@ -458,44 +537,46 @@
                           onChange={handleCheckboxChange}
                           className="mr-2"
                           checked={formData.chronicDiseases.includes(disease)}
+                          disabled={isLoading}
                         />
                         {disease}
                       </label>
                     ))}
-                    
-                    {/* Other Disease Option */}
-                    <div className="flex items-center gap-2 mt-2">
-                      <input 
-                        type="checkbox" 
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setFormData(prev => ({
-                              ...prev,
-                              chronicDiseases: [...prev.chronicDiseases.filter(d => d !== 'None')]
-                            }));
-                          } else {
-                            setOtherDisease('');
-                            setFormData(prev => ({
-                              ...prev,
-                              chronicDiseases: prev.chronicDiseases.filter(d => !d.startsWith('Other:'))
-                            }));
-                          }
-                        }}
-                        className="mr-2"
-                        checked={otherDisease.trim() !== '' || formData.chronicDiseases.some(d => d.startsWith('Other:'))}
-                      />
-                      <span className="mr-2">Other:</span>
-                      <input 
-                        type="text" 
-                        placeholder="Specify other disease" 
-                        className="border p-1 rounded flex-1"
-                        value={otherDisease}
-                        onChange={handleOtherDiseaseChange}
-                        disabled={formData.chronicDiseases.includes('None')}
-                      />
-                    </div>
                   </div>
-                  <p className="text-sm text-gray-500 mt-1">* Please select at least one option</p>
+                    
+                  {/* Other Disease Option */}
+                  <div className="flex items-center gap-2 mt-4">
+                    <input 
+                      type="checkbox" 
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setFormData(prev => ({
+                            ...prev,
+                            chronicDiseases: [...prev.chronicDiseases.filter(d => d !== 'None')]
+                          }));
+                        } else {
+                          setOtherDisease('');
+                          setFormData(prev => ({
+                            ...prev,
+                            chronicDiseases: prev.chronicDiseases.filter(d => !d.startsWith('Other:'))
+                          }));
+                        }
+                      }}
+                      className="mr-2"
+                      checked={otherDisease.trim() !== '' || formData.chronicDiseases.some(d => d.startsWith('Other:'))}
+                      disabled={isLoading || formData.chronicDiseases.includes('None')}
+                    />
+                    <span className="mr-2">Other:</span>
+                    <input 
+                      type="text" 
+                      placeholder="Specify other disease" 
+                      className="border p-3 rounded flex-1 border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                      value={otherDisease}
+                      onChange={handleOtherDiseaseChange}
+                      disabled={isLoading || formData.chronicDiseases.includes('None')}
+                    />
+                  </div>
+                  <p className="text-sm text-gray-500 mt-2">* Please select at least one option (select "None" if no diseases)</p>
                 </div>
 
                 <button 
@@ -518,12 +599,13 @@
 
               <p className="text-sm text-center text-gray-600 mt-4">
                 Already have an account? 
-                <a href="login.html" className="text-green-600 hover:underline ml-1"> Login here</a>
+                <a href="login.html" className="text-green-600 hover:underline ml-1 font-medium"> Login here</a>
               </p>
 
               <div className="text-center mt-6">
-                <a href="index.html" className="text-gray-500 hover:underline text-sm">
-                  ← Back to Home
+                <a href="index.html" className="text-gray-500 hover:underline text-sm flex items-center justify-center">
+                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                  Back to Home
                 </a>
               </div>
             </div>
