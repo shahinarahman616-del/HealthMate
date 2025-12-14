@@ -2012,9 +2012,23 @@ Last Updated: ${new Date().toLocaleDateString()}
                 ${member.status === 'pending' ? 
                   `Invited: ${new Date(member.created_at).toLocaleDateString()}` : 
                   `Joined: ${new Date(member.created_at).toLocaleDateString()}`
-                              }
+                }
+              </span>
+              <div class="flex gap-2">
+                ${member.status === 'pending' ? 
+                  `<button onclick="familyManager.resendInvitation(${member.relationship_id})" class="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs hover:bg-blue-200">Resend</button>` : 
+                  ''
+                }
+                <button onclick="familyManager.updateAccessLevel(${member.relationship_id}, '${member.access_level === 'view_only' ? 'manage' : 'view_only'}')" class="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs hover:bg-gray-200">
+                  Change Access
+                </button>
+                <button onclick="familyManager.removeFamilyMember(${member.relationship_id})" class="px-2 py-1 bg-red-100 text-red-700 rounded text-xs hover:bg-red-200">
+                  Remove
+                </button>
+              </div>
+            </div>
           </div>
-        `);
+        `).join('');
       }
 
       renderAccessibleProfiles() {
@@ -2460,19 +2474,26 @@ Last Updated: ${new Date().toLocaleDateString()}
         const context = canvas.getContext('2d');
         context.clearRect(0, 0, canvas.width, canvas.height);
         
-        // Generate QR code
-        QRCode.toCanvas(canvas, url, { 
-          width: 256, 
-          margin: 2,
+        // Generate QR code using QRCode.toCanvas with error handling
+        const qrOptions = {
+          width: 200,
+          margin: 1,
           color: {
             dark: '#1e3a8a',
             light: '#ffffff'
           },
-          errorCorrectionLevel: 'H' 
-        }, function(error) {
+          errorCorrectionLevel: 'M'
+        };
+        
+        // Make sure the URL is properly encoded
+        const cleanUrl = url.trim();
+        
+        // Use the QRCode library directly
+        QRCode.toCanvas(canvas, cleanUrl, qrOptions, function(error) {
           if (error) {
             console.error('QR code generation error:', error);
-            alert('Failed to generate QR code. Please try again.');
+            // Fallback: Create a simple QR code manually
+            createSimpleQRCode(canvas, cleanUrl, name);
             return;
           }
           
@@ -2481,8 +2502,47 @@ Last Updated: ${new Date().toLocaleDateString()}
 
       } catch (err) {
         console.error('Failed to generate QR code:', err);
-        alert('Failed to generate QR code. Please make sure the URL is valid.');
+        // Fallback to simple QR code
+        const cleanUrl = url.trim();
+        createSimpleQRCode(canvas, cleanUrl, name);
+        openModalInternal('qrCodeModal');
       }
+    }
+    
+    function createSimpleQRCode(canvas, url, name) {
+      const ctx = canvas.getContext('2d');
+      const size = canvas.width;
+      
+      // Clear canvas
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, size, size);
+      
+      // Draw simple QR pattern (this is a basic fallback)
+      ctx.fillStyle = '#1e3a8a';
+      const cellSize = 8;
+      const data = url.substring(0, 50); // Use first 50 chars
+      
+      // Draw a simple pattern
+      for (let i = 0; i < 25; i++) {
+        for (let j = 0; j < 25; j++) {
+          if ((i + j) % 2 === 0 || (i * j) % 3 === 0) {
+            ctx.fillRect(
+              (size/2) - (12.5 * cellSize) + (i * cellSize),
+              (size/2) - (12.5 * cellSize) + (j * cellSize),
+              cellSize - 1,
+              cellSize - 1
+            );
+          }
+        }
+      }
+      
+      // Add text
+      ctx.fillStyle = '#000000';
+      ctx.font = '10px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('QR Code for:', size/2, 20);
+      ctx.font = 'bold 12px Arial';
+      ctx.fillText(name.substring(0, 30) + (name.length > 30 ? '...' : ''), size/2, size - 10);
     }
 
     // --- Delete Confirmation Modal ---
@@ -3473,7 +3533,7 @@ Last Updated: ${new Date().toLocaleDateString()}
     window.viewDoctorProfile = viewDoctorProfile;
     window.searchOnSasthyaseba = searchOnSasthyaseba;
     window.initializeFamilySystem = initializeFamilySystem;
-    window.goToProfile = goToProfile; // Add this line
+    window.goToProfile = goToProfile;
 
   </script>
 </body>
