@@ -1,3 +1,6 @@
+// Base URL of your Render backend
+const API_BASE_URL = 'https://healthmate-backend-m6xy.onrender.com';
+
 // Authentication and User Management Functions
 
 function checkAuth() {
@@ -87,7 +90,7 @@ async function updateUserProfile(profileData) {
     try {
         const userEmail = localStorage.getItem('healthmate_user');
         
-        const response = await fetch(`http://localhost:5000/api/profile/${userEmail}`, {
+        const response = await fetch(`${API_BASE_URL}/api/profile/${userEmail}`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
@@ -127,7 +130,7 @@ async function fetchUserProfile() {
             return null;
         }
 
-        const response = await fetch(`http://localhost:5000/api/profile/${userEmail}`);
+        const response = await fetch(`${API_BASE_URL}/api/profile/${userEmail}`);
         const result = await response.json();
         
         if (result.success) {
