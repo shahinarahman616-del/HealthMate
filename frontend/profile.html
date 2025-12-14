@@ -1,91 +1,415 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HealthMate - Profile</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  </head>
-
-  <body class="bg-gray-50 text-gray-800">
-    <div id="root"></div>
-
-    <script type="text/babel">
-      // Set backend base URL
-      const BASE_URL = window.location.hostname === 'localhost'
-        ? 'http://localhost:5000'
-        : 'https://healthmate-backend-m6xy.onrender.com';
-
-      // Navbar component
-      const Navbar = () => (
-        <nav className="bg-white shadow-sm">
-          <div className="max-w-6xl mx-auto flex justify-between items-center p-4">
-            <div className="flex items-center gap-2">
-              <span className="text-green-600 text-2xl font-bold">💚</span>
-              <h1 className="text-xl font-semibold text-gray-800">HealthMate</h1>
+    <style>
+        /* Loading spinner */
+        .spinner {
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #10B981;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .info-card {
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            border-left: 4px solid #10B981;
+        }
+        
+        .disease-tag {
+            display: inline-block;
+            background-color: #dcfce7;
+            color: #166534;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            margin: 0.25rem;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-sm sticky top-0 z-10">
+        <div class="max-w-6xl mx-auto flex justify-between items-center p-4">
+            <div class="flex items-center gap-2">
+                <span class="text-green-600 text-2xl font-bold">💚</span>
+                <h1 class="text-xl font-semibold text-gray-800">HealthMate</h1>
             </div>
-            <ul className="flex gap-8 text-gray-700 font-medium">
-              <li><a href="index.html" className="hover:text-green-600">Home</a></li>
-              <li><a href="login.html" className="hover:text-green-600">Login</a></li>
-              <li><a href="register.html" className="hover:text-green-600">Register</a></li>
+            <ul class="flex gap-8 text-gray-700 font-medium">
+                <li><a href="index.html" class="hover:text-green-600">Home</a></li>
+                <li><a href="dashboard.html" class="hover:text-green-600">Dashboard</a></li>
+                <li><a href="login.html" class="hover:text-green-600">Login</a></li>
+                <li><a href="register.html" class="hover:text-green-600">Register</a></li>
             </ul>
-          </div>
-        </nav>
-      );
-
-      // Profile component
-      const Profile = () => {
-        const [profile, setProfile] = React.useState(null);
-
-        React.useEffect(() => {
-          fetchProfile();
-        }, []);
-
-        async function fetchProfile() {
-          try {
-            const res = await fetch(`${BASE_URL}/api/profile`, {
-              method: 'GET',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('token')}` // if using token auth
-              }
-            });
-            const data = await res.json();
-            setProfile(data);
-          } catch (err) {
-            console.error('Error fetching profile:', err);
-          }
-        }
-
-        if (!profile) {
-          return <p className="text-center mt-10 text-gray-600">Loading profile...</p>;
-        }
-
-        return (
-          <div className="max-w-3xl mx-auto bg-white shadow-md rounded-md p-8 mt-10">
-            <h2 className="text-2xl font-bold mb-4">My Profile</h2>
-            <p><strong>Name:</strong> {profile.name}</p>
-            <p><strong>Email:</strong> {profile.email}</p>
-            <p><strong>Phone:</strong> {profile.phone || 'N/A'}</p>
-            <p><strong>Age:</strong> {profile.age || 'N/A'}</p>
-          </div>
-        );
-      };
-
-      // Main App
-      const App = () => (
-        <div>
-          <Navbar />
-          <Profile />
         </div>
-      );
+    </nav>
 
-      // Render App
-      const root = ReactDOM.createRoot(document.getElementById("root"));
-      root.render(<App />);
+    <div class="max-w-6xl mx-auto p-4 md:p-6">
+        <!-- Page Header -->
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold text-gray-800 mb-2">My Profile</h1>
+            <p class="text-gray-600">View and manage your personal health information</p>
+        </div>
+
+        <!-- Loading State -->
+        <div id="loadingState" class="text-center py-16">
+            <div class="spinner mx-auto mb-4"></div>
+            <p class="text-gray-600">Loading profile information...</p>
+        </div>
+
+        <!-- Profile Content (hidden by default) -->
+        <div id="profileContent" class="hidden">
+            <!-- Profile Header -->
+            <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+                <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                    <div class="flex items-center gap-4">
+                        <div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center text-green-600 text-3xl">
+                            👤
+                        </div>
+                        <div>
+                            <h2 id="userName" class="text-2xl font-bold text-gray-800"></h2>
+                            <p id="userEmail" class="text-gray-600"></p>
+                            <div class="flex items-center gap-2 mt-2">
+                                <span id="userAgeGender" class="text-sm text-gray-500"></span>
+                                <span class="text-gray-300">•</span>
+                                <span id="userBloodGroup" class="text-sm font-medium text-red-600"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <button onclick="window.location.href='dashboard.html'" 
+                            class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium transition-colors">
+                        ← Back to Dashboard
+                    </button>
+                </div>
+            </div>
+
+            <!-- Health Information Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <!-- Contact Information -->
+                <div class="info-card p-5 rounded-xl">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                        <span>📞</span> Contact Information
+                    </h3>
+                    <div class="space-y-3">
+                        <div>
+                            <p class="text-sm text-gray-500">Phone Number</p>
+                            <p id="userPhone" class="font-medium text-gray-800"></p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">Email Address</p>
+                            <p id="userEmail2" class="font-medium text-gray-800"></p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">Address</p>
+                            <p id="userAddress" class="font-medium text-gray-800"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Health Metrics -->
+                <div class="info-card p-5 rounded-xl">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                        <span>📊</span> Health Metrics
+                    </h3>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <p class="text-sm text-gray-500">Height</p>
+                            <p id="userHeight" class="font-medium text-gray-800 text-lg"></p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">Weight</p>
+                            <p id="userWeight" class="font-medium text-gray-800 text-lg"></p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">Age</p>
+                            <p id="userAge" class="font-medium text-gray-800 text-lg"></p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500">BMI</p>
+                            <p id="userBMI" class="font-medium text-gray-800 text-lg"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chronic Diseases -->
+            <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                    <span>⚕️</span> Chronic Diseases & Conditions
+                </h3>
+                <div id="diseasesContainer" class="flex flex-wrap gap-2">
+                    <!-- Diseases will be populated here -->
+                </div>
+                <p id="noDiseases" class="text-gray-500 italic">No chronic diseases reported</p>
+            </div>
+
+            <!-- Recent Activity / Notes -->
+            <div class="bg-white rounded-xl shadow-sm p-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                    <span>📝</span> Profile Information
+                </h3>
+                <div class="text-sm text-gray-600 space-y-2">
+                    <p>Your profile was created to help manage your health information in one place.</p>
+                    <p>Keep your information updated for accurate health insights and recommendations.</p>
+                </div>
+                <div class="mt-4 pt-4 border-t border-gray-100">
+                    <button onclick="window.location.href='register.html?edit=true'" 
+                            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium text-sm transition-colors">
+                        Edit Profile Information
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Error State -->
+        <div id="errorState" class="hidden text-center py-16">
+            <div class="text-5xl mb-4">😕</div>
+            <h3 class="text-xl font-semibold text-gray-800 mb-2">Unable to Load Profile</h3>
+            <p class="text-gray-600 mb-6">We couldn't load your profile information. You might need to log in first.</p>
+            <div class="space-x-4">
+                <button onclick="window.location.href='login.html'" 
+                        class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium transition-colors">
+                    Go to Login
+                </button>
+                <button onclick="window.location.href='dashboard.html'" 
+                        class="px-6 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 font-medium transition-colors">
+                    Back to Dashboard
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Get user data from localStorage (set by your login/register)
+        function getUserData() {
+            // Try multiple possible storage locations
+            const userData = localStorage.getItem('healthmate_userData') || 
+                           localStorage.getItem('healthmate_user') || 
+                           localStorage.getItem('user_data');
+            
+            if (userData) {
+                try {
+                    return JSON.parse(userData);
+                } catch (e) {
+                    console.log('Could not parse user data, using fallback');
+                    return getFallbackUserData();
+                }
+            }
+            
+            return getFallbackUserData();
+        }
+
+        // Fallback data if nothing is in localStorage
+        function getFallbackUserData() {
+            // Check URL parameters for demo data
+            const urlParams = new URLSearchParams(window.location.search);
+            const demo = urlParams.get('demo');
+            
+            if (demo === 'true') {
+                return {
+                    name: "Demo User",
+                    email: "demo@example.com",
+                    phone: "+8801XXXXXXXXX",
+                    age: 30,
+                    height: 170,
+                    weight: 65,
+                    bloodGroup: "O+",
+                    gender: "male",
+                    address: "Dhaka, Bangladesh",
+                    chronicDiseases: ["None"],
+                    heightUnit: "cm"
+                };
+            }
+            
+            return null;
+        }
+
+        // Calculate BMI
+        function calculateBMI(height, weight) {
+            if (!height || !weight) return "N/A";
+            
+            // Convert height to meters if in cm
+            let heightM = height;
+            if (height > 10) { // Assuming cm if > 10
+                heightM = height / 100;
+            }
+            
+            const bmi = weight / (heightM * heightM);
+            return bmi.toFixed(1);
+        }
+
+        // Format height display
+        function formatHeight(height, unit) {
+            if (!height) return "N/A";
+            
+            if (unit === 'ft') {
+                const feet = Math.floor(height);
+                const inches = Math.round((height - feet) * 12);
+                return `${feet}'${inches}"`;
+            }
+            return `${height} cm`;
+        }
+
+        // Load and display profile
+        function loadProfile() {
+            const loading = document.getElementById('loadingState');
+            const content = document.getElementById('profileContent');
+            const error = document.getElementById('errorState');
+            
+            const userData = getUserData();
+            
+            if (!userData) {
+                loading.classList.add('hidden');
+                error.classList.remove('hidden');
+                return;
+            }
+            
+            // Display user data
+            document.getElementById('userName').textContent = userData.name || "User";
+            document.getElementById('userEmail').textContent = userData.email || "No email";
+            document.getElementById('userEmail2').textContent = userData.email || "No email";
+            document.getElementById('userPhone').textContent = userData.phone || "Not provided";
+            document.getElementById('userAddress').textContent = userData.address || "Not provided";
+            document.getElementById('userAge').textContent = userData.age ? `${userData.age} years` : "N/A";
+            document.getElementById('userBloodGroup').textContent = userData.bloodGroup || "Not specified";
+            
+            // Age & Gender
+            const ageGender = [];
+            if (userData.age) ageGender.push(`${userData.age} years`);
+            if (userData.gender) ageGender.push(userData.gender);
+            document.getElementById('userAgeGender').textContent = ageGender.join(", ") || "Not specified";
+            
+            // Height & Weight
+            document.getElementById('userHeight').textContent = formatHeight(userData.height, userData.heightUnit);
+            document.getElementById('userWeight').textContent = userData.weight ? `${userData.weight} kg` : "N/A";
+            
+            // BMI
+            const bmi = calculateBMI(userData.height, userData.weight);
+            document.getElementById('userBMI').textContent = bmi;
+            
+            // Chronic Diseases
+            const diseasesContainer = document.getElementById('diseasesContainer');
+            const noDiseases = document.getElementById('noDiseases');
+            
+            if (userData.chronicDiseases && userData.chronicDiseases.length > 0) {
+                diseasesContainer.innerHTML = '';
+                userData.chronicDiseases.forEach(disease => {
+                    if (disease !== 'None') {
+                        const tag = document.createElement('span');
+                        tag.className = 'disease-tag';
+                        tag.textContent = disease;
+                        diseasesContainer.appendChild(tag);
+                    }
+                });
+                
+                if (diseasesContainer.children.length === 0) {
+                    noDiseases.classList.remove('hidden');
+                } else {
+                    noDiseases.classList.add('hidden');
+                }
+            } else {
+                noDiseases.classList.remove('hidden');
+            }
+            
+            // Show content
+            loading.classList.add('hidden');
+            content.classList.remove('hidden');
+        }
+
+        // Also check for user data in sessionStorage
+        function checkAllStorage() {
+            // Try localStorage first
+            let userData = getUserData();
+            
+            if (!userData) {
+                // Try sessionStorage
+                const sessionData = sessionStorage.getItem('healthmate_userData');
+                if (sessionData) {
+                    try {
+                        userData = JSON.parse(sessionData);
+                    } catch (e) {
+                        console.log('Could not parse session data');
+                    }
+                }
+            }
+            
+            return userData;
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Try to load from all possible storage locations
+            const userData = checkAllStorage();
+            
+            if (!userData) {
+                // Check if we have a user ID in URL (from dashboard)
+                const urlParams = new URLSearchParams(window.location.search);
+                const userId = urlParams.get('user_id');
+                
+                if (userId) {
+                    // Try to fetch user data from backend
+                    fetchUserFromBackend(userId);
+                } else {
+                    // Show error after delay
+                    setTimeout(() => {
+                        loadProfile();
+                    }, 1000);
+                }
+            } else {
+                loadProfile();
+            }
+        });
+
+        // Function to fetch user from backend (if needed)
+        async function fetchUserFromBackend(userId) {
+            const loading = document.getElementById('loadingState');
+            
+            try {
+                // Determine backend URL
+                const isLocalhost = window.location.hostname === 'localhost' || 
+                                   window.location.hostname === '127.0.0.1';
+                const baseUrl = isLocalhost ? 'http://localhost:5001' : 
+                                              'https://healthmate-backend-m6xy.onrender.com';
+                
+                const response = await fetch(`${baseUrl}/api/user/${userId}`);
+                
+                if (response.ok) {
+                    const userData = await response.json();
+                    
+                    // Store in localStorage for future use
+                    localStorage.setItem('healthmate_userData', JSON.stringify(userData));
+                    
+                    // Load profile
+                    loadProfile();
+                } else {
+                    throw new Error('Failed to fetch user data');
+                }
+            } catch (error) {
+                console.error('Error fetching user:', error);
+                loading.innerHTML = `
+                    <div class="text-5xl mb-4">⚠️</div>
+                    <h3 class="text-xl font-semibold text-gray-800 mb-2">Connection Error</h3>
+                    <p class="text-gray-600 mb-4">Could not connect to the server.</p>
+                    <button onclick="window.location.href='dashboard.html'" 
+                            class="px-6 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 font-medium transition-colors">
+                        Return to Dashboard
+                    </button>
+                `;
+            }
+        }
+
+        // Make functions available globally
+        window.loadProfile = loadProfile;
     </script>
-  </body>
+</body>
 </html>

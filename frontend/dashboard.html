@@ -302,12 +302,12 @@
           <li><button onclick="showSection('dashboard'); toggleMobileMenu();" class="w-full text-left font-medium text-slate-700 hover:text-blue-600 hover:bg-slate-100 rounded-lg px-3 py-3 transition-all duration-200 flex items-center gap-3">
             <span class="text-xl">🏠</span> Dashboard
           </button></li>
-          <li><button onclick="showSection('myReports'); toggleMobileMenu();" class="w-full text-left font-medium text-slate_700 hover:text-blue-600 hover:bg-slate-100 rounded-lg px-3 py-3 transition-all duration-200 flex items-center gap-3">
+          <li><button onclick="showSection('myReports'); toggleMobileMenu();" class="w-full text-left font-medium text-slate-700 hover:text-blue-600 hover:bg-slate-100 rounded-lg px-3 py-3 transition-all duration-200 flex items-center gap-3">
             <span class="text-xl">📄</span> My Reports
           </button></li>
-          <li><a href="profile.html" onclick="toggleMobileMenu()" class="w-full text-left font-medium text-slate-700 hover:text-blue-600 hover:bg-slate-100 rounded-lg px-3 py-3 transition-all duration-200 flex items-center gap-3">
+          <li><button onclick="goToProfile(); toggleMobileMenu();" class="w-full text-left font-medium text-slate-700 hover:text-blue-600 hover:bg-slate-100 rounded-lg px-3 py-3 transition-all duration-200 flex items-center gap-3">
             <span class="text-xl">👤</span> Profile
-          </a></li>
+          </button></li>
           <li><button onclick="showSection('family'); toggleMobileMenu();" class="w-full text-left font-medium text-slate-700 hover:text-blue-600 hover:bg-slate-100 rounded-lg px-3 py-3 transition-all duration-200 flex items-center gap-3">
             <span class="text-xl">👨‍👩‍👧</span> Family
           </button></li>
@@ -358,7 +358,7 @@
         <ul class="space-y-2">
           <li><button onclick="showSection('dashboard')" class="w-full text-left font-medium text-slate-700 hover:text-blue-600 hover:bg-slate-100 rounded-lg px-3 py-2 transition-all duration-200">🏠 Dashboard</button></li>
           <li><button onclick="showSection('myReports')" class="w-full text-left font-medium text-slate-700 hover:text-blue-600 hover:bg-slate-100 rounded-lg px-3 py-2 transition-all duration-200">📄 My Reports</button></li>
-          <li><a href="profile.html" class="w-full text-left font-medium text-slate-700 hover:text-blue-600 hover:bg-slate-100 rounded-lg px-3 py-2 transition-all duration-200 block">👤 Profile</a></li>
+          <li><button onclick="goToProfile()" class="w-full text-left font-medium text-slate-700 hover:text-blue-600 hover:bg-slate-100 rounded-lg px-3 py-2 transition-all duration-200">👤 Profile</button></li>
           <li><button onclick="showSection('family')" class="w-full text-left font-medium text-slate-700 hover:text-blue-600 hover:bg-slate-100 rounded-lg px-3 py-2 transition-all duration-200">👨‍👩‍👧 Family</button></li>
           <li><button onclick="showSection('reminders')" class="w-full text-left font-medium text-slate-700 hover:text-blue-600 hover:bg-slate-100 rounded-lg px-3 py-2 transition-all duration-200">⏰ Reminders</button></li>
           <li><button onclick="showSection('appointments')" class="w-full text-left font-medium text-slate-700 hover:text-blue-600 hover:bg-slate-100 rounded-lg px-3 py-2 transition-all duration-200">📅 Appointments</button></li>
@@ -540,9 +540,9 @@
           <div class="text-5xl mb-4">👤</div>
           <h2 class="text-2xl font-bold text-slate-800 mb-4">Profile</h2>
           <p class="text-slate-600 mb-6">Redirecting to profile page...</p>
-          <a href="profile.html" class="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 font-medium transition-all duration-200">
+          <button onclick="goToProfile()" class="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 font-medium transition-all duration-200">
             Go to Profile Page
-          </a>
+          </button>
         </div>
       </div>
 
@@ -1135,6 +1135,45 @@
 
     // Family Manager instance
     let familyManager = null;
+
+    // Function to navigate to profile page
+    function goToProfile() {
+        // Save current user data to localStorage first
+        const userEmail = localStorage.getItem('healthmate_user');
+        const userId = localStorage.getItem('healthmate_userId');
+        const userName = localStorage.getItem('healthmate_userName');
+        const userPhone = localStorage.getItem('healthmate_userPhone');
+        const userAge = localStorage.getItem('healthmate_userAge');
+        const userHeight = localStorage.getItem('healthmate_userHeight');
+        const userWeight = localStorage.getItem('healthmate_userWeight');
+        const userBloodGroup = localStorage.getItem('healthmate_userBloodGroup');
+        const userGender = localStorage.getItem('healthmate_userGender');
+        const userAddress = localStorage.getItem('healthmate_userAddress');
+        const userChronicDiseases = localStorage.getItem('healthmate_userChronicDiseases');
+        
+        if (userEmail) {
+            // Create user data object
+            const userData = {
+                name: userName || userEmail.split('@')[0],
+                email: userEmail,
+                phone: userPhone || "Not provided",
+                age: userAge ? parseInt(userAge) : null,
+                height: userHeight ? parseFloat(userHeight) : null,
+                weight: userWeight ? parseFloat(userWeight) : null,
+                bloodGroup: userBloodGroup || "Not specified",
+                gender: userGender || "Not specified",
+                address: userAddress || "Not provided",
+                chronicDiseases: userChronicDiseases ? JSON.parse(userChronicDiseases) : ["None"],
+                heightUnit: "cm"
+            };
+            
+            // Store in localStorage for profile page
+            localStorage.setItem('healthmate_userData', JSON.stringify(userData));
+        }
+        
+        // Redirect to profile page
+        window.location.href = 'profile.html';
+    }
 
     // Toggle mobile menu
     function toggleMobileMenu() {
@@ -1973,23 +2012,9 @@ Last Updated: ${new Date().toLocaleDateString()}
                 ${member.status === 'pending' ? 
                   `Invited: ${new Date(member.created_at).toLocaleDateString()}` : 
                   `Joined: ${new Date(member.created_at).toLocaleDateString()}`
-                }
-              </span>
-              <div class="flex gap-2">
-                ${member.status === 'pending' ? `
-                  <button onclick="familyManager.resendInvitation(${member.relationship_id})" class="text-blue-600 hover:text-blue-700 text-xs px-2 py-1 rounded border border-blue-200 hover:bg-blue-50 transition-colors">Resend</button>
-                ` : `
-                  <select onchange="familyManager.updateAccessLevel(${member.relationship_id}, this.value)" class="text-xs border border-slate-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-emerald-400">
-                    <option value="view_only" ${member.access_level === 'view_only' ? 'selected' : ''}>View Only</option>
-                    <option value="manage" ${member.access_level === 'manage' ? 'selected' : ''}>Manage</option>
-                    <option value="emergency" ${member.access_level === 'emergency' ? 'selected' : ''}>Emergency</option>
-                  </select>
-                `}
-                <button onclick="familyManager.removeFamilyMember(${member.relationship_id})" class="text-red-600 hover:text-red-700 text-xs px-2 py-1 rounded border border-red-200 hover:bg-red-50 transition-colors">Remove</button>
-              </div>
-            </div>
+                              }
           </div>
-        `).join('');
+        `);
       }
 
       renderAccessibleProfiles() {
@@ -3437,6 +3462,7 @@ Last Updated: ${new Date().toLocaleDateString()}
     window.viewDoctorProfile = viewDoctorProfile;
     window.searchOnSasthyaseba = searchOnSasthyaseba;
     window.initializeFamilySystem = initializeFamilySystem;
+    window.goToProfile = goToProfile; // Add this line
 
   </script>
 </body>
