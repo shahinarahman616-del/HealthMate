@@ -35,6 +35,19 @@
             font-weight: 500;
             margin: 0.25rem;
         }
+        
+        .bmi-indicator {
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+        
+        .bmi-underweight { background-color: #93c5fd; color: #1e3a8a; }
+        .bmi-normal { background-color: #86efac; color: #14532d; }
+        .bmi-overweight { background-color: #fcd34d; color: #92400e; }
+        .bmi-obese { background-color: #fca5a5; color: #7f1d1d; }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800">
@@ -86,10 +99,16 @@
                             </div>
                         </div>
                     </div>
-                    <button onclick="window.location.href='dashboard.html'" 
-                            class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium transition-colors">
-                        ← Back to Dashboard
-                    </button>
+                    <div class="flex gap-3">
+                        <button onclick="window.location.href='dashboard.html'" 
+                                class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium transition-colors">
+                            ← Back to Dashboard
+                        </button>
+                        <button onclick="editProfile()" 
+                                class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors">
+                            Edit Profile
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -136,8 +155,15 @@
                         </div>
                         <div>
                             <p class="text-sm text-gray-500">BMI</p>
-                            <p id="userBMI" class="font-medium text-gray-800 text-lg"></p>
+                            <div class="flex items-center">
+                                <p id="userBMI" class="font-medium text-gray-800 text-lg"></p>
+                                <span id="bmiCategory" class="bmi-indicator"></span>
+                            </div>
                         </div>
+                    </div>
+                    <div id="bmiInfo" class="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700 hidden">
+                        <p class="font-medium">BMI Categories:</p>
+                        <p class="mt-1">Underweight: &lt;18.5 | Normal: 18.5-24.9 | Overweight: 25-29.9 | Obese: ≥30</p>
                     </div>
                 </div>
             </div>
@@ -153,7 +179,7 @@
                 <p id="noDiseases" class="text-gray-500 italic">No chronic diseases reported</p>
             </div>
 
-            <!-- Recent Activity / Notes -->
+            <!-- Profile Info & Actions -->
             <div class="bg-white rounded-xl shadow-sm p-6">
                 <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
                     <span>📝</span> Profile Information
@@ -162,11 +188,21 @@
                     <p>Your profile was created to help manage your health information in one place.</p>
                     <p>Keep your information updated for accurate health insights and recommendations.</p>
                 </div>
-                <div class="mt-4 pt-4 border-t border-gray-100">
-                    <button onclick="window.location.href='register.html?edit=true'" 
-                            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium text-sm transition-colors">
-                        Edit Profile Information
-                    </button>
+                <div class="mt-6 pt-6 border-t border-gray-100 flex justify-between items-center">
+                    <div>
+                        <p class="text-sm text-gray-500">Account Status: <span id="accountStatus" class="font-medium text-green-600">Active</span></p>
+                        <p class="text-xs text-gray-400 mt-1">Member since <span id="memberSince"></span></p>
+                    </div>
+                    <div class="flex gap-3">
+                        <button onclick="refreshProfile()" 
+                                class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium text-sm transition-colors">
+                            ↻ Refresh
+                        </button>
+                        <button onclick="editProfile()" 
+                                class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium text-sm transition-colors">
+                            Edit Profile
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -174,8 +210,8 @@
         <!-- Error State -->
         <div id="errorState" class="hidden text-center py-16">
             <div class="text-5xl mb-4">😕</div>
-            <h3 class="text-xl font-semibold text-gray-800 mb-2">Unable to Load Profile</h3>
-            <p class="text-gray-600 mb-6">We couldn't load your profile information. You might need to log in first.</p>
+            <h3 id="errorTitle" class="text-xl font-semibold text-gray-800 mb-2">Unable to Load Profile</h3>
+            <p id="errorMessage" class="text-gray-600 mb-6">We couldn't load your profile information. You might need to log in first.</p>
             <div class="space-x-4">
                 <button onclick="window.location.href='login.html'" 
                         class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium transition-colors">
@@ -185,129 +221,190 @@
                         class="px-6 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 font-medium transition-colors">
                     Back to Dashboard
                 </button>
+                <button onclick="tryDemo()" 
+                        class="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium transition-colors">
+                    Try Demo Mode
+                </button>
             </div>
         </div>
     </div>
 
     <script>
-        // Get user data from localStorage (set by your login/register)
-        function getUserData() {
-            // Try multiple possible storage locations
-            const userData = localStorage.getItem('healthmate_userData') || 
-                           localStorage.getItem('healthmate_user') || 
-                           localStorage.getItem('user_data');
-            
-            if (userData) {
-                try {
-                    return JSON.parse(userData);
-                } catch (e) {
-                    console.log('Could not parse user data, using fallback');
-                    return getFallbackUserData();
-                }
-            }
-            
-            return getFallbackUserData();
-        }
+        // ---------------------------
+        // Configuration
+        // ---------------------------
+        const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+            ? 'http://localhost:5001'
+            : 'https://healthmate-backend-m6xy.onrender.com';
 
-        // Fallback data if nothing is in localStorage
-        function getFallbackUserData() {
-            // Check URL parameters for demo data
+        // ---------------------------
+        // Helper Functions
+        // ---------------------------
+
+        // Get user ID from various sources
+        function getUserId() {
+            // Try URL parameters first
             const urlParams = new URLSearchParams(window.location.search);
-            const demo = urlParams.get('demo');
+            const userIdFromUrl = urlParams.get('user_id');
+            if (userIdFromUrl) return userIdFromUrl;
             
-            if (demo === 'true') {
-                return {
-                    name: "Demo User",
-                    email: "demo@example.com",
-                    phone: "+8801XXXXXXXXX",
-                    age: 30,
-                    height: 170,
-                    weight: 65,
-                    bloodGroup: "O+",
-                    gender: "male",
-                    address: "Dhaka, Bangladesh",
-                    chronicDiseases: ["None"],
-                    heightUnit: "cm"
-                };
+            // Try localStorage
+            const storedData = localStorage.getItem('healthmate_userData');
+            if (storedData) {
+                try {
+                    const userData = JSON.parse(storedData);
+                    if (userData.user_id) return userData.user_id;
+                } catch (e) {
+                    console.log('Could not parse stored data');
+                }
             }
             
             return null;
         }
 
+        // Fetch user profile from API
+        async function fetchUserProfile(userId) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/profile/${userId}`);
+                
+                if (!response.ok) {
+                    if (response.status === 404) {
+                        throw new Error('User not found');
+                    }
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                return data;
+                
+            } catch (error) {
+                console.error('Error fetching profile:', error);
+                throw error;
+            }
+        }
+
         // Calculate BMI
-        function calculateBMI(height, weight) {
-            if (!height || !weight) return "N/A";
-            
-            // Convert height to meters if in cm
-            let heightM = height;
-            if (height > 10) { // Assuming cm if > 10
-                heightM = height / 100;
+        function calculateBMI(heightCm, weightKg) {
+            if (!heightCm || !weightKg || heightCm <= 0 || weightKg <= 0) {
+                return null;
             }
             
-            const bmi = weight / (heightM * heightM);
+            const heightM = heightCm / 100;
+            const bmi = weightKg / (heightM * heightM);
             return bmi.toFixed(1);
         }
 
-        // Format height display
-        function formatHeight(height, unit) {
-            if (!height) return "N/A";
+        // Get BMI category
+        function getBMICategory(bmi) {
+            if (!bmi) return null;
             
-            if (unit === 'ft') {
-                const feet = Math.floor(height);
-                const inches = Math.round((height - feet) * 12);
-                return `${feet}'${inches}"`;
-            }
-            return `${height} cm`;
+            const bmiValue = parseFloat(bmi);
+            if (bmiValue < 18.5) return { category: 'Underweight', class: 'bmi-underweight' };
+            if (bmiValue < 25) return { category: 'Normal', class: 'bmi-normal' };
+            if (bmiValue < 30) return { category: 'Overweight', class: 'bmi-overweight' };
+            return { category: 'Obese', class: 'bmi-obese' };
         }
 
-        // Load and display profile
-        function loadProfile() {
-            const loading = document.getElementById('loadingState');
-            const content = document.getElementById('profileContent');
-            const error = document.getElementById('errorState');
+        // Format chronic diseases from JSON
+        function formatChronicDiseases(diseasesJson) {
+            if (!diseasesJson) return [];
             
-            const userData = getUserData();
-            
-            if (!userData) {
-                loading.classList.add('hidden');
-                error.classList.remove('hidden');
-                return;
+            try {
+                if (typeof diseasesJson === 'string') {
+                    return JSON.parse(diseasesJson);
+                }
+                return diseasesJson;
+            } catch (e) {
+                console.error('Error parsing chronic diseases:', e);
+                return [];
             }
+        }
+
+        // Format date
+        function formatDate(dateString) {
+            if (!dateString) return 'Unknown';
             
-            // Display user data
-            document.getElementById('userName').textContent = userData.name || "User";
-            document.getElementById('userEmail').textContent = userData.email || "No email";
-            document.getElementById('userEmail2').textContent = userData.email || "No email";
-            document.getElementById('userPhone').textContent = userData.phone || "Not provided";
-            document.getElementById('userAddress').textContent = userData.address || "Not provided";
-            document.getElementById('userAge').textContent = userData.age ? `${userData.age} years` : "N/A";
-            document.getElementById('userBloodGroup').textContent = userData.bloodGroup || "Not specified";
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+        }
+
+        // Format height display
+        function formatHeight(heightCm) {
+            if (!heightCm) return "Not specified";
+            return `${heightCm} cm`;
+        }
+
+        // Format weight display
+        function formatWeight(weightKg) {
+            if (!weightKg) return "Not specified";
+            return `${weightKg} kg`;
+        }
+
+        // ---------------------------
+        // Display Functions
+        // ---------------------------
+
+        // Display profile data
+        function displayProfileData(profileData) {
+            const user = profileData.user;
+            const profile = profileData.profile || {};
+            
+            // Basic Information
+            document.getElementById('userName').textContent = user.full_name || "User";
+            document.getElementById('userEmail').textContent = user.email || "No email";
+            document.getElementById('userEmail2').textContent = user.email || "No email";
+            document.getElementById('userPhone').textContent = user.phone || "Not provided";
+            document.getElementById('userAddress').textContent = user.address || "Not provided";
+            document.getElementById('userBloodGroup').textContent = user.blood_group || "Not specified";
             
             // Age & Gender
             const ageGender = [];
-            if (userData.age) ageGender.push(`${userData.age} years`);
-            if (userData.gender) ageGender.push(userData.gender);
+            if (user.age) ageGender.push(`${user.age} years`);
+            if (user.gender) ageGender.push(user.gender);
             document.getElementById('userAgeGender').textContent = ageGender.join(", ") || "Not specified";
+            document.getElementById('userAge').textContent = user.age ? `${user.age} years` : "Not specified";
             
             // Height & Weight
-            document.getElementById('userHeight').textContent = formatHeight(userData.height, userData.heightUnit);
-            document.getElementById('userWeight').textContent = userData.weight ? `${userData.weight} kg` : "N/A";
+            document.getElementById('userHeight').textContent = formatHeight(user.height_cm);
+            document.getElementById('userWeight').textContent = formatWeight(user.weight_kg);
             
-            // BMI
-            const bmi = calculateBMI(userData.height, userData.weight);
-            document.getElementById('userBMI').textContent = bmi;
+            // BMI Calculation and Display
+            const bmi = calculateBMI(user.height_cm, user.weight_kg);
+            const bmiElement = document.getElementById('userBMI');
+            const bmiCategoryElement = document.getElementById('bmiCategory');
+            const bmiInfoElement = document.getElementById('bmiInfo');
+            
+            if (bmi) {
+                bmiElement.textContent = bmi;
+                const bmiCategory = getBMICategory(bmi);
+                if (bmiCategory) {
+                    bmiCategoryElement.textContent = bmiCategory.category;
+                    bmiCategoryElement.className = `bmi-indicator ${bmiCategory.class}`;
+                    bmiInfoElement.classList.remove('hidden');
+                }
+            } else {
+                bmiElement.textContent = "N/A";
+                bmiCategoryElement.textContent = "";
+                bmiCategoryElement.className = "bmi-indicator";
+            }
             
             // Chronic Diseases
             const diseasesContainer = document.getElementById('diseasesContainer');
             const noDiseases = document.getElementById('noDiseases');
+            const diseases = formatChronicDiseases(user.chronic_diseases);
             
-            if (userData.chronicDiseases && userData.chronicDiseases.length > 0) {
-                diseasesContainer.innerHTML = '';
-                userData.chronicDiseases.forEach(disease => {
-                    if (disease !== 'None') {
+            diseasesContainer.innerHTML = '';
+            
+            if (diseases && diseases.length > 0) {
+                diseases.forEach(disease => {
+                    if (disease && disease.trim() !== '' && disease !== 'None') {
                         const tag = document.createElement('span');
                         tag.className = 'disease-tag';
-                        tag.textContent = disease;
+                        tag.textContent = disease.trim();
                         diseasesContainer.appendChild(tag);
                     }
                 });
@@ -321,95 +418,214 @@
                 noDiseases.classList.remove('hidden');
             }
             
-            // Show content
-            loading.classList.add('hidden');
-            content.classList.remove('hidden');
-        }
-
-        // Also check for user data in sessionStorage
-        function checkAllStorage() {
-            // Try localStorage first
-            let userData = getUserData();
-            
-            if (!userData) {
-                // Try sessionStorage
-                const sessionData = sessionStorage.getItem('healthmate_userData');
-                if (sessionData) {
-                    try {
-                        userData = JSON.parse(sessionData);
-                    } catch (e) {
-                        console.log('Could not parse session data');
-                    }
-                }
+            // Account Status and Member Since
+            if (user.account_status) {
+                const statusElement = document.getElementById('accountStatus');
+                statusElement.textContent = user.account_status;
+                statusElement.className = user.account_status === 'Active' 
+                    ? 'font-medium text-green-600' 
+                    : 'font-medium text-red-600';
             }
             
-            return userData;
+            if (user.created_at) {
+                document.getElementById('memberSince').textContent = formatDate(user.created_at);
+            }
+            
+            // Store in localStorage for future use
+            localStorage.setItem('healthmate_userData', JSON.stringify({
+                user_id: user.user_id,
+                name: user.full_name,
+                email: user.email,
+                phone: user.phone,
+                age: user.age,
+                height: user.height_cm,
+                weight: user.weight_kg,
+                bloodGroup: user.blood_group,
+                gender: user.gender,
+                address: user.address,
+                chronicDiseases: diseases,
+                created_at: user.created_at
+            }));
         }
 
-        // Initialize on page load
-        document.addEventListener('DOMContentLoaded', function() {
-            // Try to load from all possible storage locations
-            const userData = checkAllStorage();
-            
-            if (!userData) {
-                // Check if we have a user ID in URL (from dashboard)
-                const urlParams = new URLSearchParams(window.location.search);
-                const userId = urlParams.get('user_id');
-                
-                if (userId) {
-                    // Try to fetch user data from backend
-                    fetchUserFromBackend(userId);
-                } else {
-                    // Show error after delay
-                    setTimeout(() => {
-                        loadProfile();
-                    }, 1000);
-                }
-            } else {
-                loadProfile();
-            }
-        });
-
-        // Function to fetch user from backend (if needed)
-        async function fetchUserFromBackend(userId) {
+        // Handle errors
+        function showErrorState(title = 'Unable to Load Profile', message = 'We couldn\'t load your profile information. You might need to log in first.') {
             const loading = document.getElementById('loadingState');
+            const content = document.getElementById('profileContent');
+            const error = document.getElementById('errorState');
+            
+            loading.classList.add('hidden');
+            content.classList.add('hidden');
+            error.classList.remove('hidden');
+            
+            document.getElementById('errorTitle').textContent = title;
+            document.getElementById('errorMessage').textContent = message;
+        }
+
+        // Show demo data
+        function showDemoData() {
+            const demoData = {
+                user: {
+                    user_id: 999,
+                    full_name: "Demo User",
+                    email: "demo@example.com",
+                    phone: "+8801XXXXXXXXX",
+                    age: 30,
+                    height_cm: 170,
+                    weight_kg: 65,
+                    blood_group: "O+",
+                    gender: "Male",
+                    address: "Dhaka, Bangladesh",
+                    chronic_diseases: JSON.stringify(["None"]),
+                    account_status: "Active",
+                    created_at: new Date().toISOString()
+                },
+                profile: {
+                    profile_picture: "default_profile.png",
+                    bio: "Health conscious individual",
+                    health_goal: "Weight Management"
+                }
+            };
+            
+            displayProfileData(demoData);
+            
+            // Hide loading, show content
+            document.getElementById('loadingState').classList.add('hidden');
+            document.getElementById('profileContent').classList.remove('hidden');
+            
+            // Show demo warning
+            const header = document.querySelector('.bg-white.rounded-xl.shadow-sm.p-6.mb-6');
+            if (header) {
+                const demoAlert = document.createElement('div');
+                demoAlert.className = 'mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-700 text-sm';
+                demoAlert.innerHTML = `
+                    <div class="flex items-center">
+                        <span class="mr-2">⚠️</span>
+                        <p>You are viewing demo data. <a href="login.html" class="font-medium underline hover:text-yellow-800">Log in</a> to see your actual profile.</p>
+                    </div>
+                `;
+                header.appendChild(demoAlert);
+            }
+        }
+
+        // Refresh profile data
+        async function refreshProfile() {
+            const userId = getUserId();
+            if (!userId) {
+                showErrorState('User not identified', 'Please log in again to refresh your profile.');
+                return;
+            }
+            
+            // Show loading
+            document.getElementById('profileContent').classList.add('hidden');
+            document.getElementById('loadingState').classList.remove('hidden');
+            document.getElementById('errorState').classList.add('hidden');
             
             try {
-                // Determine backend URL
-                const isLocalhost = window.location.hostname === 'localhost' || 
-                                   window.location.hostname === '127.0.0.1';
-                const baseUrl = isLocalhost ? 'http://localhost:5001' : 
-                                              'https://healthmate-backend-m6xy.onrender.com';
+                const profileData = await fetchUserProfile(userId);
+                displayProfileData(profileData);
                 
-                const response = await fetch(`${baseUrl}/api/user/${userId}`);
+                // Hide loading, show content
+                document.getElementById('loadingState').classList.add('hidden');
+                document.getElementById('profileContent').classList.remove('hidden');
                 
-                if (response.ok) {
-                    const userData = await response.json();
-                    
-                    // Store in localStorage for future use
-                    localStorage.setItem('healthmate_userData', JSON.stringify(userData));
-                    
-                    // Load profile
-                    loadProfile();
-                } else {
-                    throw new Error('Failed to fetch user data');
-                }
+                // Show success message
+                const successMsg = document.createElement('div');
+                successMsg.className = 'fixed top-20 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 animate-fade-in-out';
+                successMsg.textContent = 'Profile refreshed successfully!';
+                document.body.appendChild(successMsg);
+                
+                setTimeout(() => {
+                    successMsg.remove();
+                }, 3000);
+                
             } catch (error) {
-                console.error('Error fetching user:', error);
-                loading.innerHTML = `
-                    <div class="text-5xl mb-4">⚠️</div>
-                    <h3 class="text-xl font-semibold text-gray-800 mb-2">Connection Error</h3>
-                    <p class="text-gray-600 mb-4">Could not connect to the server.</p>
-                    <button onclick="window.location.href='dashboard.html'" 
-                            class="px-6 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 font-medium transition-colors">
-                        Return to Dashboard
-                    </button>
-                `;
+                console.error('Refresh error:', error);
+                showErrorState('Refresh Failed', 'Could not refresh profile data. Please try again.');
             }
         }
 
+        // Edit profile
+        function editProfile() {
+            const userId = getUserId();
+            if (userId) {
+                window.location.href = `register.html?edit=true&user_id=${userId}`;
+            } else {
+                window.location.href = 'login.html';
+            }
+        }
+
+        // Try demo mode
+        function tryDemo() {
+            showDemoData();
+            document.getElementById('errorState').classList.add('hidden');
+        }
+
+        // ---------------------------
+        // Main Initialization
+        // ---------------------------
+        async function initializeProfile() {
+            // Check for demo mode
+            const urlParams = new URLSearchParams(window.location.search);
+            const demoMode = urlParams.get('demo') === 'true';
+            
+            if (demoMode) {
+                showDemoData();
+                return;
+            }
+            
+            // Get user ID
+            const userId = getUserId();
+            
+            if (!userId) {
+                showErrorState('User not identified', 'Please log in or register to view your profile.');
+                return;
+            }
+            
+            try {
+                const profileData = await fetchUserProfile(userId);
+                displayProfileData(profileData);
+                
+                // Hide loading, show content
+                document.getElementById('loadingState').classList.add('hidden');
+                document.getElementById('profileContent').classList.remove('hidden');
+                
+            } catch (error) {
+                console.error('Profile initialization error:', error);
+                
+                // Check error type
+                if (error.message.includes('User not found')) {
+                    showErrorState('User not found', 'The requested profile does not exist. Please check your user ID.');
+                } else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+                    showErrorState('Connection Error', 'Cannot connect to the server. Please check your internet connection.');
+                } else {
+                    showErrorState('Failed to load profile', 'An unexpected error occurred. Please try again later.');
+                }
+            }
+        }
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', initializeProfile);
+
+        // Add CSS animation for fade-in-out
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes fade-in-out {
+                0% { opacity: 0; transform: translateY(-10px); }
+                10% { opacity: 1; transform: translateY(0); }
+                90% { opacity: 1; transform: translateY(0); }
+                100% { opacity: 0; transform: translateY(-10px); }
+            }
+            .animate-fade-in-out {
+                animation: fade-in-out 3s ease-in-out forwards;
+            }
+        `;
+        document.head.appendChild(style);
+
         // Make functions available globally
-        window.loadProfile = loadProfile;
+        window.refreshProfile = refreshProfile;
+        window.editProfile = editProfile;
+        window.tryDemo = tryDemo;
     </script>
 </body>
 </html>

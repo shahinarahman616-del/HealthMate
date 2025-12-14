@@ -2456,7 +2456,11 @@ Last Updated: ${new Date().toLocaleDateString()}
       urlTextEl.value = url;
 
       try {
-        // Use the global QRCode from the CDN
+        // Clear previous QR code
+        const context = canvas.getContext('2d');
+        context.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Generate QR code
         QRCode.toCanvas(canvas, url, { 
           width: 256, 
           margin: 2,
@@ -2465,12 +2469,19 @@ Last Updated: ${new Date().toLocaleDateString()}
             light: '#ffffff'
           },
           errorCorrectionLevel: 'H' 
+        }, function(error) {
+          if (error) {
+            console.error('QR code generation error:', error);
+            alert('Failed to generate QR code. Please try again.');
+            return;
+          }
+          
+          openModalInternal('qrCodeModal');
         });
 
-        openModalInternal('qrCodeModal');
       } catch (err) {
         console.error('Failed to generate QR code:', err);
-        alert('Failed to generate QR code.');
+        alert('Failed to generate QR code. Please make sure the URL is valid.');
       }
     }
 
