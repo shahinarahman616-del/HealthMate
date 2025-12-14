@@ -218,11 +218,34 @@
             const result = await response.json();
 
             if (result.success) {
+              // Store user data in the format that profile.html expects
+              const userData = {
+                user_id: result.user.id, // Make sure this matches your backend response
+                full_name: result.user.name || '',
+                email: result.user.email,
+                phone: result.user.phone || '',
+                // Add other user data if available from backend
+                ...result.user
+              };
+              
+              // Store in localStorage for profile page
+              localStorage.setItem('healthmate_userData', JSON.stringify(userData));
+              
+              // Also store individual values for backward compatibility
               localStorage.setItem('healthmate_loggedIn', 'true');
               localStorage.setItem('healthmate_user', result.user.email);
               localStorage.setItem('healthmate_userId', result.user.id);
-              localStorage.setItem('healthmate_userName', result.user.name);
-              localStorage.setItem('healthmate_token', result.user.token || '');
+              localStorage.setItem('healthmate_userName', result.user.name || '');
+              
+              if (result.user.token) {
+                localStorage.setItem('healthmate_token', result.user.token);
+              }
+              
+              // Log storage for debugging
+              console.log('User data stored:', userData);
+              console.log('User ID stored:', result.user.id);
+              
+              // Redirect to dashboard
               window.location.href = 'dashboard.html';
             } else {
               setErrorMessage(result.message || 'Login failed. Please check your credentials.');
